@@ -106,7 +106,7 @@ export default function HomePage() {
         if (!agencyResponse.ok) {
           // Try to get specific error from response body, otherwise use status
           let errorMsg = `Agencies fetch failed! status: ${agencyResponse.status}`;
-          try { const errorData = await agencyResponse.json(); errorMsg = errorData.error || errorMsg; } catch (_) { }
+          try { const errorData = await agencyResponse.json(); errorMsg = errorData.error || errorMsg; } catch { }
           throw new Error(errorMsg); // Throw error to be caught below
         }
         const agencyData: Agency[] = await agencyResponse.json();
@@ -116,7 +116,7 @@ export default function HomePage() {
         if (!dateResponse.ok) {
           // Try to get specific error from response body, otherwise use status
           let errorMsg = `Dates fetch failed! status: ${dateResponse.status}`;
-          try { const errorData = await dateResponse.json(); errorMsg = errorData.error || errorMsg; } catch (_) { }
+          try { const errorData = await dateResponse.json(); errorMsg = errorData.error || errorMsg; } catch { }
           throw new Error(errorMsg); // Throw error to be caught below
         }
         const dateData: string[] = await dateResponse.json();
@@ -139,22 +139,24 @@ export default function HomePage() {
           previousDate: topChangingData.previousDate
         });
 
-      } catch (err: any) {
-        // --- Catch ANY error from the try block (fetch, json parsing, or thrown errors) ---
-        console.error("Error fetching initial data:", err);
-        const errorMessage = err.message || 'Failed to load initial data';
-        // Set both errors to indicate a general failure in loading initial data
-        setAgenciesError(errorMessage);
-        setDatesError(errorMessage);
-        // Ensure states relying on fetched data are empty/default
-        setAgencies([]);
-        setAvailableDates([]);
-        setSelectedDate('');
-        setTopAgenciesError(err.message || 'Failed to load top agencies');
-        setTopAgencies([]);
-        setTopChangingError(err.message || 'Failed to load top changing agencies');
-        setTopChangingAgencies([]);
-        // --- End Catch Block ---
+      } catch (err: unknown) { // Use unknown type for error
+        if (err instanceof Error) {
+          // --- Catch ANY error from the try block (fetch, json parsing, or thrown errors) ---
+          console.error("Error fetching initial data:", err);
+          const errorMessage = err.message || 'Failed to load initial data';
+          // Set both errors to indicate a general failure in loading initial data
+          setAgenciesError(errorMessage);
+          setDatesError(errorMessage);
+          // Ensure states relying on fetched data are empty/default
+          setAgencies([]);
+          setAvailableDates([]);
+          setSelectedDate('');
+          setTopAgenciesError(err.message || 'Failed to load top agencies');
+          setTopAgencies([]);
+          setTopChangingError(err.message || 'Failed to load top changing agencies');
+          setTopChangingAgencies([]);
+          // --- End Catch Block ---
+        }
       } finally {
         // This runs regardless of success or error in try/catch
         setAgenciesLoading(false);
@@ -184,15 +186,17 @@ export default function HomePage() {
       const response = await fetch(`/api/agency-word-counts?${params.toString()}`);
       if (!response.ok) {
         let errorMsg = `History fetch failed! status: ${response.status}`;
-        try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (_) { }
+        try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { }
         throw new Error(errorMsg);
       }
       const data: HistoryEntry[] = await response.json();
       setHistoryData(data);
       console.log(`Workspaceed ${data.length} history records.`);
-    } catch (err: any) {
-      setHistoryError(err.message || 'Failed to load word count history');
-      console.error("Error fetching history:", err);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setHistoryError(err.message || 'Failed to load word count history');
+        console.error("Error fetching history:", err);
+      }
     } finally {
       setHistoryLoading(false);
     }
@@ -216,7 +220,6 @@ export default function HomePage() {
     setHistoryLoading(true);
     setHistoryError(null);
 
-    let querySucceeded = false;
     try {
       const response = await fetch('/api/query-agency', { // Call your existing query route
         method: 'POST',
@@ -229,16 +232,19 @@ export default function HomePage() {
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (_) { /* Ignore if response body isn't JSON */ }
+        } catch { /* Ignore if response body isn't JSON */ }
         throw new Error(errorMsg);
       }
       const data = await response.json();
       setResults(data.results || []); // Update results state
 
 
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch data');
-      console.error("Error submitting query:", err);
+    }
+    catch (err: unknown) { // Use unknown
+      if (err instanceof Error) {
+        setError(err.message || 'Failed to fetch data');
+        console.error("Error submitting query:", err);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -466,8 +472,8 @@ export default function HomePage() {
 
         </div>
 
-          {/* Add some whitespace */}
-          <div className="h-2"></div>
+        {/* Add some whitespace */}
+        <div className="h-2"></div>
 
       </div>{/* --- Section for Top 5 Agencies by POSITIVE Change Table --- */}
       <div className="mb-12 text-center">
@@ -482,8 +488,8 @@ export default function HomePage() {
           </p>
         )}
 
-                  {/* Add some whitespace */}
-                  <div className="h-2"></div>
+        {/* Add some whitespace */}
+        <div className="h-2"></div>
 
         {topChangingLoading && <p className="text-sm text-gray-500 py-4">Loading data...</p>}
         {topChangingError && <p className="text-sm text-red-400 py-4">Error loading data: {topChangingError}</p>}

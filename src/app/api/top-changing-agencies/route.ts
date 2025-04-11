@@ -12,8 +12,8 @@ const pool = new Pool({
     password: process.env.NEXT_PUBLIC_PGPASSWORD,
     port: parseInt(process.env.NEXT_PUBLIC_PGPORT || "5432"),
     // ssl: { rejectUnauthorized: false } // Example - adjust as needed
-  });
-  
+});
+
 
 
 // Updated interface for the response objects within the 'agencies' array
@@ -111,7 +111,7 @@ export async function GET() {
                 console.log(`Workspaceed ${topAgencies.length} top changing agencies (positive change only).`);
 
             } else {
-                 console.log("Not enough dates found in agency_word_counts for comparison.");
+                console.log("Not enough dates found in agency_word_counts for comparison.");
             }
 
             // --- 4. Prepare and return the structured response ---
@@ -128,10 +128,19 @@ export async function GET() {
                 console.log("DB client released.");
             }
         }
-    } catch (error: any) {
-        console.error("API Error fetching top changing agencies:", error);
-        return NextResponse.json({ error: 'Failed to fetch top changing agencies' }, { status: 500 });
-    } finally {
-         console.log("--- /api/top-changing-agencies GET request finished ---");
+    } catch (error: unknown) { // Use unknown
+        console.error("API Error occurred:");
+        if (error instanceof Error) {
+            // Safely access message if it's an Error object
+            console.error("Error Name:", error.name);
+            console.error("Error Message:", error.message);
+            console.error("Error Stack:", error.stack);
+            // Return error.message in NextResponse if desired
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        } else {
+            // Handle cases where the thrown value isn't an Error object
+            console.error("Caught non-error value:", error);
+            return NextResponse.json({ error: 'An unknown server error occurred' }, { status: 500 });
+        }
     }
 }

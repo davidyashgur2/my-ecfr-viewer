@@ -14,36 +14,10 @@ const pool = new Pool({
   // ssl: { rejectUnauthorized: false } // Example - adjust as needed
 });
 
-// export async function GET() {
-//   // This function handles GET requests to /api/agencies
-//   try {
-//     const client = await pool.connect();
-//     try {
-//       // Query to get agency ID and Name, ordered alphabetically
-//       const result = await client.query(
-//         'SELECT id, name FROM agencies ORDER BY name;'
-//       );
-//       // Return the list of agencies as JSON
-//       return NextResponse.json(result.rows);
-//     } finally {
-//       // IMPORTANT: Release the client back to the pool
-//       client.release();
-//     }
-//   } catch (error) {
-//     console.error("API Error fetching agencies:", error);
-//     // Return a standard error response
-//     return NextResponse.json({ error: 'Failed to fetch agencies' }, { status: 500 });
-//   }
-// }
-
 export async function GET() {
   console.log("--- /api/agencies GET request received ---"); // Log entry
   let client; // Define client outside try block for finally
   try {
-    console.log("Attempting to connect to DB pool...");
-    // Log connection details (BE CAREFUL NOT TO LOG PASSWORDS in production logs)
-    console.log("DB Host (from env):", process.env.NEXT_PUBLIC_PGHOST); // Example
-    console.log("DB Name (from env):", process.env.NEXT_PUBLIC_PGDATABASE); // Example
 
     client = await pool.connect();
     console.log("DB client acquired from pool.");
@@ -56,17 +30,20 @@ export async function GET() {
 
     return NextResponse.json(result.rows);
 
-  } catch (error: any) { // Catch any potential error
-    // --- THIS IS THE MOST IMPORTANT LOG ---
-    console.error("!!! API Error fetching agencies:", error); // Log the full error object
-    console.error("Error Name:", error.name);
-    console.error("Error Message:", error.message);
-    console.error("Error Stack:", error.stack);
-    // --- END OF IMPORTANT LOG ---
-
-    // Return a generic error response, but the details are in the server logs
-    return NextResponse.json({ error: 'Failed to fetch agencies due to server error' }, { status: 500 });
-
+  } catch (error: unknown) { // Use unknown
+    console.error("API Error occurred:");
+    if (error instanceof Error) {
+        // Safely access message if it's an Error object
+        console.error("Error Name:", error.name);
+        console.error("Error Message:", error.message);
+        console.error("Error Stack:", error.stack);
+        // Return error.message in NextResponse if desired
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+        // Handle cases where the thrown value isn't an Error object
+        console.error("Caught non-error value:", error);
+        return NextResponse.json({ error: 'An unknown server error occurred' }, { status: 500 });
+    }
   } finally {
     if (client) {
       client.release(); // Ensure client is released back to the pool

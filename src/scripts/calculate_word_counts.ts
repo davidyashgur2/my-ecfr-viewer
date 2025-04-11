@@ -19,7 +19,41 @@ interface FullExtractedText {
     chapter: string; // We decided to store as string after getting scope ID
     tag: string;
     text: string;
-}/**
+}
+
+interface EcfrRoot {
+    '?xml'?: { '@version'?: number; '@encoding'?: string; };
+    ECFR?: {
+        AMDDATE?: string;
+        VOLUME?: XmlAttributes;
+        DIV1?: XmlElement | XmlElement[]; // Title can be single or array (though unlikely)
+    };
+}
+
+interface XmlElement extends XmlAttributes {
+    '#text'?: string; // Text content via fast-xml-parser config
+    HEAD?: unknown;   // Could be string, object, array of objects
+    P?: unknown;      // Could be string, object, array of objects
+    DIV1?: unknown;
+    DIV2?: unknown;
+    DIV3?: unknown;
+    DIV4?: unknown;
+    DIV5?: unknown;
+    DIV6?: unknown;
+    DIV8?: unknown; // Section
+    // Add other potential element tag keys if known
+    // Allow any other properties for deeper nesting / unexpected tags
+    [key: string]: unknown;
+}
+
+interface XmlAttributes {
+    '@N'?: string | number;
+    '@TYPE'?: string;
+    '@VOLUME'?: number | string;
+    // Add other relevant attributes if needed
+}
+
+/**
  * Recursively finds and extracts text content from <P> (Paragraph) and <HEAD> (Heading)
  * tags nested within a given JavaScript object representation of an XML element.
  *
@@ -27,8 +61,8 @@ interface FullExtractedText {
  * @param depth Current recursion depth (to prevent potential infinite loops).
  * @returns An array of objects, each containing the tag ('P' or 'HEAD') and its text content.
  */
-function findTextRecursive(element: any, depth = 0): SimpleTextResult[] {
-    let extractedTexts: SimpleTextResult[] = [];
+function findTextRecursive(element: unknown, depth = 0): SimpleTextResult[] {
+    const extractedTexts: SimpleTextResult[] = [];
 
     // --- Input Validation and Recursion Guard ---
     if (!element || typeof element !== 'object' || depth > MAX_RECURSION_DEPTH_TEXT) {
@@ -36,19 +70,34 @@ function findTextRecursive(element: any, depth = 0): SimpleTextResult[] {
         return extractedTexts;
     }
 
+    const currentElement = element as Record<string, unknown>; // Cast to indexable type inside
+
     // --- Base Cases: Extract Text from <P> and <HEAD> at the Current Level ---
     const tagsToExtract: string[] = ['P', 'HEAD'];
     for (const tagName of tagsToExtract) {
         // Use ensureArray to handle both single objects and arrays for P/HEAD tags
-        ensureArray(element[tagName]).forEach(node => {
+        ensureArray(currentElement[tagName]).forEach(node => {
             // Extract text: handles node being a simple string OR an object
             // with the text under the '#text' key (from fast-xml-parser options).
             // NOTE: This approach primarily gets text directly within P/HEAD.
             // If XML has <P>Text <i>italic</i> more text.</P>, this might only get "Text "
             // depending on parser options for mixed content. Handling true mixed
             // content robustly often requires more complex parsing or post-processing.
-            const text = (typeof node === 'object' && node !== null ? node["#text"] : node) || '';
-            const trimmedText = text.trim();
+            let text = ''; // Initialize text
+            if (typeof node === 'string') {
+                // Case 1: The node itself is the text string
+                text = node;
+            } else if (typeof node === 'object' && node !== null) {
+                // Case 2: The node is an object, try to access '#text' property
+                // Use type assertion or check property existence
+                const potentialText = (node as Record<string, unknown>)["#text"]; // Cast node to indexable type
+                if (typeof potentialText === 'string') {
+                    text = potentialText;
+                }
+                // NOTE: This doesn't handle deeper nested text within inline elements easily.
+                // For <P>Text <I>italic</I></P>, if parsed as an object with mixed content,
+                // this logic might still only get "Text " from the first #text node.
+            } const trimmedText = text.trim();
 
             if (trimmedText) {
                 extractedTexts.push({ tag: tagName, text: trimmedText });
@@ -67,7 +116,7 @@ function findTextRecursive(element: any, depth = 0): SimpleTextResult[] {
             continue;
         }
 
-        const potentialChildren = element[key];
+        const potentialChildren = currentElement[key];
 
         // Check if the property value looks like a child element or array of elements
         if (typeof potentialChildren === 'object' && potentialChildren !== null) {
@@ -83,24 +132,16 @@ function findTextRecursive(element: any, depth = 0): SimpleTextResult[] {
 }
 
 // Helper function to always get children as an array
-function ensureArray(item: any): any[] {
+function ensureArray(item: unknown): unknown[] {
     if (!item) {
         return []; // Return empty array if item is null or undefined
     }
     return Array.isArray(item) ? item : [item]; // If not array, wrap in array
 }
 
-// Helper to safely access potentially nested children as an array
-function getChildrenArray(element: any, key: string): any[] {
-    if (!element || typeof element !== 'object') {
-        return [];
-    }
-    return ensureArray(element[key]);
-}
-
 // Function to find starting scope elements based on chapter identifiers
-function findScopeElements(titleElement: any, targetChapters: string[]): any[] {
-    const foundScopes: any[] = [];
+function findScopeElements(titleElement: XmlElement | undefined, targetChapters: string[]): XmlElement[] {
+    const foundScopes: XmlElement[] = [];
     if (!titleElement || typeof titleElement !== 'object' || !targetChapters || targetChapters.length === 0) {
         return foundScopes;
     }
@@ -109,17 +150,20 @@ function findScopeElements(titleElement: any, targetChapters: string[]): any[] {
     const potentialScopeDivTypes = ['DIV3', 'DIV5']; // Add DIV2, DIV6? Depends on mapping. Start with DIV3/DIV5.
 
     // Recursive helper function to search within an element
-    const searchInChildren = (element: any) => {
+    const searchInChildren = (element: unknown) => {
         if (!element || typeof element !== 'object') return;
+
+        const currentElement = element as Record<string, unknown>;
 
         // Check direct children for potential scope types
         for (const divType of potentialScopeDivTypes) {
-            ensureArray(element[divType]).forEach(scopeCandidate => {
-                const nValue = scopeCandidate?.['@N'];
+            ensureArray(currentElement[divType]).forEach(scopeCandidate => {
+                const candidateElement = scopeCandidate as Record<string, unknown>;
+                const nValue = candidateElement?.['@N'];
                 // Check if this element's N value matches a target chapter
                 if (nValue && targetChapters.includes(String(nValue))) {
                     console.log(`Found matching scope: <span class="math-inline">\{divType\} N\=</span>{nValue}`);
-                    foundScopes.push(scopeCandidate);
+                    foundScopes.push(candidateElement as XmlElement);
                     // Option: Should we stop searching under this scope once found?
                     // For now, let's not, to allow finding multiple matches if needed.
                 }
@@ -129,10 +173,13 @@ function findScopeElements(titleElement: any, targetChapters: string[]): any[] {
         // Now, recurse into common container children (DIV1, DIV2, DIV3, DIV4, DIV5, DIV6 etc.)
         // Avoid infinite loops - don't recurse into the types we just checked as scopes.
         for (const key in element) {
-            if (key.startsWith('DIV') && !potentialScopeDivTypes.includes(key) && typeof element[key] === 'object') {
-                ensureArray(element[key]).forEach(child => {
-                    searchInChildren(child); // Recurse
-                });
+            if (key.startsWith('DIV') && !potentialScopeDivTypes.includes(key)) {
+                const potentialChildren = currentElement[key];
+                if (typeof potentialChildren === 'object' && potentialChildren !== null) {
+                    ensureArray(potentialChildren).forEach(child => {
+                        searchInChildren(child); // Recurse with unknown
+                    });
+                }
             }
         }
     };
@@ -174,7 +221,7 @@ const xmlParser = new XMLParser({
 async function processAgencyDate(client: PoolClient, agencyId: number, agencyName: string, effectiveDate: string) {
     console.log(`\nProcessing Agency ID: <span class="math-inline">\{agencyId\} \(</span>{agencyName}) for Date: ${effectiveDate}`);
     let relevantTitles: number[] = [];
-    let extractedTexts: FullExtractedText[] = [];
+    const extractedTexts: FullExtractedText[] = [];
     let totalWordCount = 0;
 
     try {
@@ -201,7 +248,7 @@ async function processAgencyDate(client: PoolClient, agencyId: number, agencyNam
                 [relevantTitles, effectiveDate]
             );
             console.log(`  Fetched ${xmlDocsResult.rows.length} XML documents.`);
-            const MAX_RESULTS = 500; // Limit results to prevent overload
+            // const MAX_RESULTS = 500; // Limit results to prevent overload
 
             // 3. Parse, Find Scope, Extract Text
             for (const docRow of xmlDocsResult.rows) {
@@ -212,9 +259,15 @@ async function processAgencyDate(client: PoolClient, agencyId: number, agencyNam
                 console.log(`Processing Title ${titleNum} with ${relevantChapters.length} chapters...`);
 
                 try {
-                    const jsonObj = xmlParser.parse(xmlString);
-                    const titleDivArr = ensureArray(jsonObj?.ECFR?.DIV1); // Get DIV1 as array
-                    const relevantChapters = refsByTitle[titleNum] || []; // Chapters for *this* title
+                    const jsonObj = xmlParser.parse(xmlString) as EcfrRoot;;
+                    // Get the raw array, which might contain non-objects or null/undefined
+                    const unknownArray = ensureArray(jsonObj?.ECFR?.DIV1);
+
+                    // Filter the array to keep only actual objects (basic check for XmlElement)
+                    // and tell TypeScript these filtered items are XmlElement
+                    const titleDivArr: XmlElement[] = unknownArray.filter(
+                        (item): item is XmlElement => typeof item === 'object' && item !== null
+                    ); const relevantChapters = refsByTitle[titleNum] || []; // Chapters for *this* title
 
                     // log jspn structure
                     // console.log("Parsed JSON structure:", JSON.stringify(jsonObj, null, 2));
@@ -223,16 +276,16 @@ async function processAgencyDate(client: PoolClient, agencyId: number, agencyNam
                     const titleDiv = jsonObj?.ECFR?.DIV1; // Assuming root ECFR, Title DIV1
                     if (!titleDiv) continue;
 
-                    const chapters = titleDiv.DIV3 ? (Array.isArray(titleDiv.DIV3) ? titleDiv.DIV3 : [titleDiv.DIV3]) : [];
+                    // const chapters = titleDiv.DIV3 ? (Array.isArray(titleDiv.DIV3) ? titleDiv.DIV3 : [titleDiv.DIV3]) : [];
 
                     // logging
-                    console.log(`Found ${chapters.length} chapters in Title ${titleNum}.`);
+                    // console.log(`Found ${chapters.length} chapters in Title ${titleNum}.`);
 
                     if (titleDivArr.length > 0 && relevantChapters.length > 0) {
-                        const titleElement = titleDivArr[0]; // Assuming only one DIV1 per file
+                        const titleElement: XmlElement = titleDivArr[0]; // Assuming only one DIV1 per file
 
                         // Find the actual scope elements (e.g., specific DIV3 or DIV5 objects)
-                        const scopeElements = findScopeElements(titleElement, relevantChapters);
+                        const scopeElements: XmlElement[] = findScopeElements(titleElement, relevantChapters);
 
                         if (scopeElements.length > 0) {
                             console.log(`Title ${titleNum}: Found <span class="math-inline">\{scopeElements\.length\} relevant scope\(s\) for chapters \[</span>{relevantChapters.join(', ')}].`);
@@ -241,7 +294,7 @@ async function processAgencyDate(client: PoolClient, agencyId: number, agencyNam
                                 const chapterNum = scopeElement?.['@N'] || 'Unknown'; // Get N from the found scope
                                 const textsWithinScope = findTextRecursive(scopeElement); // Use the robust text finder
                                 extractedTexts.push(
-                                    ...textsWithinScope.map((el: { tag: any; text: any; }) => ({
+                                    ...textsWithinScope.map((el: { tag: string; text: string; }) => ({
                                         title: titleNum,
                                         chapter: String(chapterNum), // Use the actual N value found
                                         tag: el.tag,
@@ -304,7 +357,7 @@ async function processAgencyDate(client: PoolClient, agencyId: number, agencyNam
                     await client.query(insertChecksumSql, [agencyId, effectiveDate, checksumAlgo, checksumValue]);
                     console.log(`  Stored/Updated checksum for Agency ID ${agencyId} on ${effectiveDate}.`);
 
-                } catch (checksumError: any) {
+                } catch (checksumError: unknown) {
                     console.error(`  Error calculating or storing checksum for Agency ID ${agencyId} on ${effectiveDate}:`, checksumError);
                     // Decide how to handle this - log and continue?
                 }
@@ -331,7 +384,7 @@ async function processAgencyDate(client: PoolClient, agencyId: number, agencyNam
         await client.query(insertSql, [agencyId, effectiveDate, totalWordCount]);
         console.log(`  Stored/Updated word count: ${totalWordCount}`);
 
-    } catch (error: any) {
+    } catch (error) {
         console.error(`  Error processing Agency ID ${agencyId} on ${effectiveDate}:`, error);
         // Decide how to handle errors - skip agency? Log and continue?
     }

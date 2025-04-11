@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
           ORDER BY
               wc.effective_date DESC; -- Order by date, most recent first
       `;
-      const queryParams: any[] = [agencyName];
+      const queryParams: string[] = [agencyName];
 
       console.log("Executing SQL for counts & checksums:", queryParams);
       const result = await client.query(sqlQuery, queryParams);
@@ -72,9 +72,21 @@ export async function GET(request: NextRequest) {
       if (client) client.release(); // Ensure client is released
       console.log("DB client released.");
     }
-  } catch (error: any) {
-    console.error("API Error fetching word counts/checksums:", error);
-    return NextResponse.json({ error: 'Failed to fetch historical data' }, { status: 500 });
+  } catch (error: unknown) { // Use unknown
+    console.error("API Error occurred:");
+    if (error instanceof Error) {
+        // Safely access message if it's an Error object
+        console.error("Error Name:", error.name);
+        console.error("Error Message:", error.message);
+        console.error("Error Stack:", error.stack);
+        // Return error.message in NextResponse if desired
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+        // Handle cases where the thrown value isn't an Error object
+        console.error("Caught non-error value:", error);
+        return NextResponse.json({ error: 'An unknown server error occurred' }, { status: 500 });
+    }
+
   } finally {
        console.log("--- /api/agency-word-counts GET request finished ---");
   }

@@ -48,7 +48,7 @@ export async function GET() {
         } finally {
             if(client) client.release();
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("API Error fetching top agencies:", error);
         return NextResponse.json({ error: 'Failed to fetch top agencies' }, { status: 500 });
     }
