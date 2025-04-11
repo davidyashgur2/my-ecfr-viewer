@@ -67,7 +67,7 @@ interface XmlAttributes {
     // Add other relevant attributes if needed
 }
 
-const MAX_RECURSION_DEPTH_TEXT = 5; // Safety limit for recursion depth
+const MAX_RECURSION_DEPTH_TEXT = 15; // Safety limit for recursion depth
 
 /**
  * Recursively finds and extracts text content from <P> (Paragraph) and <HEAD> (Heading)
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         console.log(`Fetched ${xmlDocsResult.rowCount} XML documents for titles: ${relevantTitles.join(', ')}`);
         // --- 3. Parse XML & Extract Text ---
         const extractedTexts: { title: number; chapter: string; tag: string; text: string }[] = [];
-        const MAX_RESULTS = 10; // Limit results to prevent overload
+        const MAX_RESULTS = 5; // Limit results to prevent overload
 
         for (const docRow of xmlDocsResult.rows) {
             const titleNum = docRow.cfr_title;
