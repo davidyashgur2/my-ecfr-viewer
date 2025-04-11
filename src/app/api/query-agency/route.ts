@@ -67,7 +67,7 @@ interface XmlAttributes {
     // Add other relevant attributes if needed
 }
 
-const MAX_RECURSION_DEPTH_TEXT = 15; // Safety limit for recursion depth
+const MAX_RECURSION_DEPTH_TEXT = 5; // Safety limit for recursion depth
 
 /**
  * Recursively finds and extracts text content from <P> (Paragraph) and <HEAD> (Heading)
