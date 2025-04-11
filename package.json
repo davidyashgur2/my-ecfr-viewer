@@ -7,8 +7,20 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy:gcr": "gcloud run deploy ecfr-viewer-service --source . --region us-east4 --platform managed --allow-unauthenticated --port 3000 --service-account dav1243@gmail.com --add-cloudsql-instances=\"doge-456323:us-east4:xml-db\" --update-secrets=PGPORT=PGPORT:latest --update-secrets=PGDATABASE=PGDATABASE:latest --update-secrets=PGHOST=PGHOST:latest --update-secrets=PGUSER=PGUSER:latest --update-secrets=PGUSER=YOUR_DB_USER_SECRET_NAME:latest --update-secrets=PGPASSWORD=PGPASSWORD:latest --set-env-vars=PGDATABASE=xml-db --set-env-vars=PGHOST=/cloudsql/doge-456323:us-central1:us-east4"
-
+"deploy:gcr": "gcloud run deploy usds-backend 
+      --source . 
+      --region us-east4 
+      --platform managed 
+      --allow-unauthenticated 
+      --port 3000 
+      --service-account dav1243@gmail.com 
+      --add-cloudsql-instances=\"doge-456323:us-central1:xml-db\" 
+      --update-secrets=PGUSER=PGUSER:latest 
+      --update-secrets=PGPASSWORD=PGPASSWORD:latest 
+      --set-env-vars=PGDATABASE=xml-db 
+      --set-env-vars=PGHOST=/cloudsql/doge-456323:us-central1:xml-db 
+      # You can add more --set-env-vars=KEY=VALUE pairs here if needed, separated by commas or on new lines with backslashes
+      # Example: --set-env-vars=NODE_ENV=production"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
