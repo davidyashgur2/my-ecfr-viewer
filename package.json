@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy:gcr": "gcloud run deploy ecfr-viewer-service --source . --region us-east4 --platform managed --allow-unauthenticated --port 3000 --service-account dav1243@gmail.com --add-cloudsql-instances=\"doge-456323:us-east4:xml-db\" --update-secrets=PGPORT=PGPORT:latest --update-secrets=PGDATABASE=PGDATABASE:latest --update-secrets=PGHOST=PGHOST:latest --update-secrets=PGUSER=PGUSER:latest --update-secrets=PGUSER=YOUR_DB_USER_SECRET_NAME:latest --update-secrets=PGPASSWORD=PGPASSWORD:latest --set-env-vars=PGDATABASE=xml-db --set-env-vars=PGHOST=/cloudsql/doge-456323:us-central1:us-east4"
+
   },
   "dependencies": {
     "dotenv": "^16.4.7",

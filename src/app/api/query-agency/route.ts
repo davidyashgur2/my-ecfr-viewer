@@ -6,11 +6,11 @@ import { XMLParser } from 'fast-xml-parser'; // XML Parser
 const pool = new Pool({
     //   connectionString: process.env.POSTGRES_URL, // Example using a single URL variable
     // Or use individual variables:
-    user: process.env.NEXT_PUBLIC_PGUSER,
-    host: process.env.NEXT_PUBLIC_PGHOST,
-    database: process.env.NEXT_PUBLIC_PGDATABASE,
-    password: process.env.NEXT_PUBLIC_PGPASSWORD,
-    port: parseInt(process.env.NEXT_PUBLIC_PGPORT || "5432"),
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: parseInt(process.env.PGPORT || "5432"),
     // ssl: { rejectUnauthorized: false } // Adjust SSL based on your provider's requirements
 });
 

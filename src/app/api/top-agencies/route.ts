@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
 const pool = new Pool({
-    user: process.env.NEXT_PUBLIC_PGUSER,
-    host: process.env.NEXT_PUBLIC_PGHOST,
-    database: process.env.NEXT_PUBLIC_PGDATABASE,
-    password: process.env.NEXT_PUBLIC_PGPASSWORD,
-    port: parseInt(process.env.NEXT_PUBLIC_PGPORT || "5432"),
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: parseInt(process.env.PGPORT || "5432"),
 });
 
 interface TopAgency {

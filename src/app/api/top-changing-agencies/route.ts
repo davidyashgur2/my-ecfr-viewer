@@ -6,11 +6,11 @@ import { Pool, PoolClient } from 'pg'; // Added PoolClient for typing
 // Make sure SSL configuration is correct for your cloud provider if needed
 const pool = new Pool({
     // connectionString: process.env.POSTGRES_URL, // Or individual PG... env vars
-    user: process.env.NEXT_PUBLIC_PGUSER,
-    host: process.env.NEXT_PUBLIC_PGHOST,
-    database: process.env.NEXT_PUBLIC_PGDATABASE,
-    password: process.env.NEXT_PUBLIC_PGPASSWORD,
-    port: parseInt(process.env.NEXT_PUBLIC_PGPORT || "5432"),
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: parseInt(process.env.PGPORT || "5432"),
     // ssl: { rejectUnauthorized: false } // Example - adjust as needed
 });
 
